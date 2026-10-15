@@ -29,4 +29,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SUPABASE_URL:     ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY:     ${{ secrets.SUPABASE_KEY }}
-        run: python scanner_v727.py --single-cycle
+        run: python scanner.py --single-cycle
