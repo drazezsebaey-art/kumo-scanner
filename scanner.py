@@ -211,7 +211,7 @@ import pandas as pd
 import requests
 
 # ---------------- CONFIG ----------------
-BASE_URL      = "https://api.binance.com"
+BASE_URL      = os.getenv("BINANCE_BASE_URL", "https://api1.binance.com")
 FUTURES_URL   = "https://fapi.binance.com"   # V7.2.3: Binance Futures REST
 INTERVAL_SECONDS = 15 * 60
 QUICK_WORKERS = 16
@@ -324,10 +324,6 @@ OBS_FILE = "scanner_observations_v70.json"
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8883190748:AAH1KQbVNq8oADv7mTV-nuUXylprKhDXUc4").strip()
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID",   "8145404781").strip()
-
-# ── Supabase config ───────────────────────────────────────────────────────────
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ujwfrfgkdhiprebygkuz.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqd2ZyZmdrZGhpcHJlYnlna3V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMDM1NDUsImV4cCI6MjEwNjY3OTU0NX0.29QkGKvGCJoZVJW6hbkKAkT-HHn9QErMSoW6I9BNDrE")
 TELEGRAM_COOLDOWN_MIN = 90
 
 SESSION = requests.Session()
@@ -3438,18 +3434,6 @@ def run_scan():
             print(f"[EE] results.json saved → {_results_path.name}")
         except Exception as _ee_err:
             print(f"[EE] Experiment engine failed: {_ee_err}")
-            _ee_results = None
-
-        # ── Supabase push ─────────────────────────────────────────────────────
-        try:
-            os.environ.setdefault("SUPABASE_URL", SUPABASE_URL)
-            os.environ.setdefault("SUPABASE_KEY", SUPABASE_KEY)
-            import supabase_push as _sp
-            _sp.push_observations(OBSERVATIONS)
-            if _ee_results:
-                _sp.push_experiment_results(_ee_results)
-        except Exception as _sp_err:
-            print(f"[SUPA] Push failed: {_sp_err}")
         # ─────────────────────────────────────────────────────────────────────
 
         print(f"Observations: {len(OBSERVATIONS)} | Open: {sum(x.get('status')=='OPEN' for x in OBSERVATIONS.values())}")
@@ -3470,22 +3454,11 @@ def seconds_to_next_quarter():
 
 
 if __name__ == "__main__":
-    import argparse as _ap
-    _parser = _ap.ArgumentParser(add_help=False)
-    _parser.add_argument("--single-cycle", action="store_true",
-                         help="Run one scan cycle then exit (for GitHub Actions)")
-    _args, _ = _parser.parse_known_args()
-
     if os.getenv("TELEGRAM_TEST", "0") == "1":
         telegram_test()
-    elif _args.single_cycle:
-        # GitHub Actions mode — one cycle then exit
+    run_scan()
+    while True:
+        sleep_for = seconds_to_next_quarter()
+        print(f"Next scan in {sleep_for/60:.1f} min")
+        time.sleep(sleep_for)
         run_scan()
-    else:
-        # Normal server mode — loop forever
-        run_scan()
-        while True:
-            sleep_for = seconds_to_next_quarter()
-            print(f"Next scan in {sleep_for/60:.1f} min")
-            time.sleep(sleep_for)
-            run_scan()
